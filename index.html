@@ -58,7 +58,21 @@
 
   /* Radio / checkbox controls */
   .control-group { display: flex; flex-direction: column; gap: 2px; }
-  .control-group-title { font-size: 12px; font-weight: 600; color: #1d1d1f; margin-bottom: 2px; }
+  .control-group-title { font-size: 12px; font-weight: 600; color: #1d1d1f; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+  .info-tip { position: relative; display: inline-flex; }
+  .info-tip-icon {
+    width: 14px; height: 14px; border-radius: 50%; border: 1px solid #c7c7cc;
+    font-size: 10px; color: #86868b; display: inline-flex; align-items: center;
+    justify-content: center; cursor: help; font-style: italic; font-family: Georgia, serif;
+    line-height: 1; flex-shrink: 0;
+  }
+  .info-tip-text {
+    display: none; position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+    background: #2c2c2e; color: #f5f5f7; font-size: 12px; font-weight: 400;
+    line-height: 1.4; padding: 10px 12px; border-radius: 8px; width: 220px;
+    z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .info-tip:hover .info-tip-text { display: block; }
   .control-group-desc { font-size: 11px; color: #86868b; line-height: 1.3; margin-bottom: 4px; }
   .radio-option { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #1d1d1f; cursor: pointer; padding: 1px 0; }
   .radio-option input { accent-color: #0071e3; margin: 0; }
@@ -283,12 +297,12 @@
   <!-- Left: settings -->
   <div class="config-settings">
     <div class="control-group">
-      <span class="control-group-title">Hypothesis</span>
+      <span class="control-group-title">Hypothesis <span class="info-tip"><span class="info-tip-icon">i</span><span class="info-tip-text">Two-sided tests check whether a variant performs differently in either direction. One-sided only tests for improvement.</span></span></span>
       <label class="radio-option"><input type="radio" name="hypothesis" value="one" id="oneTailed"> One-sided</label>
       <label class="radio-option"><input type="radio" name="hypothesis" value="two" id="twoTailed" checked> Two-sided</label>
     </div>
     <div class="control-group">
-      <span class="control-group-title">Confidence</span>
+      <span class="control-group-title">Confidence <span class="info-tip"><span class="info-tip-icon">i</span><span class="info-tip-text">How confident you need to be that the observed difference is real and not due to random chance.</span></span></span>
       <label class="radio-option"><input type="radio" name="confidence" value="0.90"> 90%</label>
       <label class="radio-option"><input type="radio" name="confidence" value="0.95" checked> 95%</label>
       <label class="radio-option"><input type="radio" name="confidence" value="0.99"> 99%</label>
@@ -297,7 +311,7 @@
       <label class="toggle-label">
         <input type="checkbox" id="bonferroni"> Multi-variant test
       </label>
-      <span class="control-group-desc">Adjusts significance threshold when comparing 3+ variants to reduce false positives (Bonferroni)</span>
+      <span class="control-group-desc">Adjusts significance threshold when comparing 3+ variants to reduce false positives (<a href="https://en.wikipedia.org/wiki/Bonferroni_correction" target="_blank">Bonferroni correction</a>)</span>
     </div>
   </div>
 
