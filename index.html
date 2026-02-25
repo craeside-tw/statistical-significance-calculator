@@ -234,13 +234,6 @@
     width: 24px; text-align: center;
   }
   .collapsible-header.open .chevron { transform: rotate(90deg); }
-  .collapsible-header--inline {
-    background: none; box-shadow: none; border-radius: 0;
-    padding: 10px 0 8px; margin-bottom: 0;
-    border-top: 1px solid #e8e8ed; margin-top: 12px;
-  }
-  .collapsible-header--inline h3 { font-size: 13px; color: #86868b; font-weight: 500; margin-bottom: 0; }
-  .collapsible-header--inline .chevron { font-size: 14px; }
   .collapsible-body {
     max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
   }
@@ -268,6 +261,46 @@
   }
   .rename-input:focus { border-color: #0071e3; outline: none; }
   .rename-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; visibility: visible; }
+  .modal {
+    background: #fff; border-radius: 16px; width: 90%; max-width: 860px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2); transform: translateY(12px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px 16px; border-bottom: 1px solid #e8e8ed;
+  }
+  .modal-header h2 { margin-bottom: 0; }
+  .modal-close {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: #f5f5f7; color: #86868b; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: #e8e8ed; color: #1d1d1f; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 16px 24px; border-top: 1px solid #e8e8ed;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  /* Review data link */
+  .review-link {
+    display: inline-block; margin-top: 10px; font-size: 13px;
+    color: #0071e3; cursor: pointer; border: none; background: none;
+    padding: 0; font-family: inherit; text-decoration: underline;
+  }
+  .review-link:hover { color: #0060c0; }
 
   /* Hidden */
   .hidden { display: none !important; }
@@ -329,15 +362,7 @@
         <p>or <span class="browse" id="browseBtn">browse for file</span></p>
         <input type="file" id="fileInput" accept=".csv" style="display:none">
       </div>
-      <div class="collapsible hidden" id="previewSection">
-        <div class="collapsible-header collapsible-header--inline" data-target="previewBody">
-          <h3>Imported Data</h3>
-          <span class="chevron">&#9654;</span>
-        </div>
-        <div class="collapsible-body" id="previewBody">
-          <div class="preview-table" id="previewTable"></div>
-        </div>
-      </div>
+      <button class="review-link hidden" id="reviewDataBtn">Review imported data</button>
     </div>
 
     <!-- Manual Entry -->
@@ -670,7 +695,7 @@ document.getElementById('clearDataBtn').addEventListener('click', () => {
   currentData = null;
   variantNameOverrides = {};
   document.getElementById('results').classList.add('hidden');
-  document.getElementById('previewSection').classList.add('hidden');
+  document.getElementById('reviewDataBtn').classList.add('hidden');
   document.getElementById('stepsSection').classList.add('hidden');
   document.getElementById('timeSection').classList.add('hidden');
   document.getElementById('clearDataBtn').classList.add('hidden');
@@ -756,86 +781,42 @@ document.querySelectorAll('input[name="hypothesis"], input[name="confidence"]').
 // ============================================================
 
 function showPreview() {
-  const section = document.getElementById('previewSection');
-  const table = document.getElementById('previewTable');
-  section.classList.remove('hidden');
+  document.getElementById('reviewDataBtn').classList.remove('hidden');
+}
 
+// ============================================================
+// Data review modal
+// ============================================================
+
+const dataModal = document.getElementById('dataModal');
+const modalContent = document.getElementById('modalContent');
+
+function openDataModal() {
   const segments = Object.keys(currentData.variantTotals);
 
-  // Rename panel with arrow and save button
-  let renameHtml = '<div class="rename-panel"><h3>Rename Variants</h3>';
+  // Rename panel
+  let html = '<div class="rename-panel"><h3>Rename Variants</h3>';
   for (const seg of segments) {
     const currentName = displayName(seg);
-    renameHtml += `<div class="rename-row">
+    html += `<div class="rename-row">
       <span class="rename-original" title="${esc(seg)}">${esc(seg)}</span>
       <span class="rename-arrow">&rarr;</span>
       <input class="rename-input" type="text" data-segment="${esc(seg)}" value="${esc(currentName)}" placeholder="${esc(seg)}">
     </div>`;
   }
-  renameHtml += '<div class="rename-actions"><button class="btn btn-primary btn-sm" id="saveRenamesBtn">Save names</button></div>';
-  renameHtml += '</div>';
+  html += '</div>';
 
   // Data table
-  let dataHtml = '';
+  html += '<div class="preview-table">';
   if (currentData.manual) {
-    dataHtml = '<table><tr><th>Variant</th><th class="num">Visitors</th><th class="num">Conversions</th><th class="num">Rate</th></tr>';
-    for (const v of currentData.variants) {
-      const rate = ((v.conversions / v.visitors) * 100).toFixed(2);
-      dataHtml += `<tr><td>${esc(displayName(v.segment))}</td><td class="num">${v.visitors.toLocaleString()}</td><td class="num">${v.conversions.toLocaleString()}</td><td class="num">${rate}%</td></tr>`;
-    }
-    dataHtml += '</table>';
-  } else {
-    dataHtml = '<table><tr><th>Step</th><th>Segment</th><th class="num">Users</th><th class="num">% From Start</th><th class="num">Drop-off</th><th>Median Time</th></tr>';
-    for (const step of currentData.steps) {
-      let first = true;
-      for (const v of step.variants) {
-        dataHtml += '<tr>';
-        dataHtml += first ? `<td>${esc(step.name)}</td>` : '<td></td>';
-        dataHtml += `<td>${esc(displayName(v.segment))}</td>`;
-        dataHtml += `<td class="num">${v.users.toLocaleString()}</td>`;
-        dataHtml += `<td class="num">${v.pctFromStart || '-'}</td>`;
-        dataHtml += `<td class="num">${v.pctDropoff || '-'}</td>`;
-        dataHtml += `<td>${v.medianTime || '-'}</td>`;
-        dataHtml += '</tr>';
-        first = false;
-      }
-    }
-    dataHtml += '</table>';
-  }
-
-  table.innerHTML = renameHtml + dataHtml;
-
-  // Bind save button — collects all inputs and commits overrides on click
-  document.getElementById('saveRenamesBtn').addEventListener('click', () => {
-    const inputs = table.querySelectorAll('.rename-input');
-    variantNameOverrides = {};
-    inputs.forEach(input => {
-      const seg = input.dataset.segment;
-      const val = input.value.trim();
-      if (val && val !== seg) {
-        variantNameOverrides[seg] = val;
-      }
-    });
-    runAnalysis();
-    updatePreviewDataTable();
-  });
-}
-
-function updatePreviewDataTable() {
-  const table = document.getElementById('previewTable');
-  const dataTables = table.querySelectorAll('table');
-  if (dataTables.length < 1) return;
-  const dataTable = dataTables[dataTables.length - 1];
-
-  if (currentData.manual) {
-    let html = '<tr><th>Variant</th><th class="num">Visitors</th><th class="num">Conversions</th><th class="num">Rate</th></tr>';
+    html += '<table><tr><th>Variant</th><th class="num">Visitors</th><th class="num">Conversions</th><th class="num">Rate</th></tr>';
     for (const v of currentData.variants) {
       const rate = ((v.conversions / v.visitors) * 100).toFixed(2);
       html += `<tr><td>${esc(displayName(v.segment))}</td><td class="num">${v.visitors.toLocaleString()}</td><td class="num">${v.conversions.toLocaleString()}</td><td class="num">${rate}%</td></tr>`;
     }
-    dataTable.innerHTML = html;
+    html += '</table>';
   } else {
-    let html = '<tr><th>Step</th><th>Segment</th><th class="num">Users</th><th class="num">% From Start</th><th class="num">Drop-off</th><th>Median Time</th></tr>';
+    html += '<table><tr><th>Step</th><th>Segment</th><th class="num">Users</th><th class="num">% From Start</th><th class="num">Drop-off</th><th>Median Time</th></tr>';
     for (const step of currentData.steps) {
       let first = true;
       for (const v of step.variants) {
@@ -850,9 +831,37 @@ function updatePreviewDataTable() {
         first = false;
       }
     }
-    dataTable.innerHTML = html;
+    html += '</table>';
   }
+  html += '</div>';
+
+  modalContent.innerHTML = html;
+  dataModal.classList.add('open');
 }
+
+function closeDataModal() {
+  dataModal.classList.remove('open');
+}
+
+function saveAndCloseModal() {
+  const inputs = modalContent.querySelectorAll('.rename-input');
+  variantNameOverrides = {};
+  inputs.forEach(input => {
+    const seg = input.dataset.segment;
+    const val = input.value.trim();
+    if (val && val !== seg) {
+      variantNameOverrides[seg] = val;
+    }
+  });
+  closeDataModal();
+  runAnalysis();
+}
+
+document.getElementById('reviewDataBtn').addEventListener('click', openDataModal);
+document.getElementById('modalCloseBtn').addEventListener('click', closeDataModal);
+document.getElementById('modalCancelBtn').addEventListener('click', closeDataModal);
+document.getElementById('modalSaveBtn').addEventListener('click', saveAndCloseModal);
+dataModal.addEventListener('click', (e) => { if (e.target === dataModal) closeDataModal(); });
 
 // ============================================================
 // Analysis
@@ -1092,5 +1101,23 @@ function esc(str) {
 
 
 </script>
+
+<!-- Data review modal -->
+<div class="modal-overlay" id="dataModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Imported Data</h2>
+      <button class="modal-close" id="modalCloseBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalContent"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="modalSaveBtn">Save names</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
