@@ -537,6 +537,38 @@ function displayName(segment) {
   return variantNameOverrides[segment] || segment;
 }
 
+function autoCleanVariantNames(segments) {
+  if (segments.length < 2) return;
+  // Longest common prefix
+  let prefix = segments[0];
+  for (let i = 1; i < segments.length; i++) {
+    while (segments[i].indexOf(prefix) !== 0) {
+      prefix = prefix.slice(0, -1);
+      if (!prefix) break;
+    }
+  }
+  // Longest common suffix
+  let suffix = segments[0];
+  for (let i = 1; i < segments.length; i++) {
+    while (!segments[i].endsWith(suffix)) {
+      suffix = suffix.slice(1);
+      if (!suffix) break;
+    }
+  }
+  // Only strip if prefix/suffix are meaningful (not the entire name)
+  variantNameOverrides = {};
+  for (const seg of segments) {
+    let cleaned = seg;
+    if (prefix.length > 0) cleaned = cleaned.slice(prefix.length);
+    if (suffix.length > 0) cleaned = cleaned.slice(0, cleaned.length - suffix.length);
+    // Remove parentheses
+    cleaned = cleaned.replace(/[()]/g, '').trim();
+    if (cleaned && cleaned !== seg) {
+      variantNameOverrides[seg] = cleaned;
+    }
+  }
+}
+
 // ============================================================
 // Collapsible sections
 // ============================================================
@@ -592,6 +624,8 @@ function handleFile(file) {
       currentData = parseFullStoryCSV(text);
       currentData.manual = false;
       currentData.fileName = file.name;
+      variantNameOverrides = {};
+      autoCleanVariantNames(Object.keys(currentData.variantTotals));
       document.getElementById('dropLabel').innerHTML = `<span class="file-loaded">&#10003; ${esc(file.name)}</span>`;
       document.getElementById('clearDataBtn').classList.remove('hidden');
       showPreview();
