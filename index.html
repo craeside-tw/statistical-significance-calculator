@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/B Significance Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #f5f5f7; color: #1d1d1f; line-height: 1.5; padding: 24px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { color: #86868b; font-size: 14px; margin-bottom: 0; }
+
+  /* Page header */
+  .page-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .page-header-left { flex: 1; }
+
+  /* Cards */
+  .card {
+    background: #fff; border-radius: 12px; padding: 20px;
+    margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* Top config: settings left, input right */
+  .config-row {
+    display: flex; gap: 16px; margin-bottom: 16px;
+  }
+  .config-settings {
+    flex: 0 0 auto; width: 280px;
+    background: #fff; border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .config-input {
+    flex: 1; min-width: 0;
+    background: #fff; border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column;
+  }
+
+  /* Settings vertical stack */
+  .setting-group { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .setting-group label { color: #86868b; white-space: nowrap; min-width: 80px; }
+  select, input[type="number"], input[type="date"] {
+    padding: 6px 10px; border: 1px solid #d2d2d7; border-radius: 8px;
+    font-size: 13px; background: #fff; color: #1d1d1f; flex: 1;
+  }
+  select { padding-right: 24px; }
+  .setting-group input[type="date"] { min-width: 0; }
+
+  /* Checkbox toggle */
+  .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #86868b; cursor: pointer; }
+  .toggle-label input { accent-color: #0071e3; }
+  .toggles-row { display: flex; gap: 14px; }
+
+  /* Tabs inside config */
+  .tab-bar { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid #e8e8ed; }
+  .tab {
+    padding: 6px 14px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent;
+    color: #86868b; transition: all 0.15s;
+  }
+  .tab:hover { color: #1d1d1f; }
+  .tab.active { color: #0071e3; border-bottom-color: #0071e3; font-weight: 500; }
+  .tab-content { display: none; flex: 1; }
+  .tab-content.active { display: flex; flex-direction: column; flex: 1; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed #d2d2d7; border-radius: 12px; padding: 32px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    background: #fafafa; flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #0071e3; background: #f0f5ff;
+  }
+  .drop-zone p { color: #86868b; font-size: 14px; }
+  .drop-zone .browse { color: #0071e3; text-decoration: underline; cursor: pointer; }
+  .drop-zone .file-loaded { color: #2e7d32; font-weight: 500; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; color: #86868b; font-weight: 500; border-bottom: 1px solid #e8e8ed; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f5f5f7; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Significance badges */
+  .sig-yes { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .sig-no { background: #fafafa; color: #86868b; padding: 2px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+  .sig-trending { background: #fff8e1; color: #f57f17; padding: 2px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+
+  /* Lift indicator */
+  .lift-positive { color: #2e7d32; font-weight: 600; }
+  .lift-negative { color: #c62828; font-weight: 600; }
+  .lift-neutral { color: #86868b; }
+
+  /* Step card header */
+  .step-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f5;
+  }
+  .step-header h3 { margin-bottom: 0; }
+
+  /* Comparison section */
+  .comparisons { margin-top: 16px; }
+  .comparison-row {
+    display: flex; align-items: center; gap: 12px; padding: 8px 0;
+    border-bottom: 1px solid #f5f5f7; font-size: 13px;
+  }
+  .comparison-row:last-child { border-bottom: none; }
+  .comparison-label { width: 200px; flex-shrink: 0; font-weight: 500; }
+  .comparison-stats { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .stat-item { display: flex; flex-direction: column; align-items: center; }
+  .stat-value { font-weight: 600; font-size: 14px; }
+  .stat-label { font-size: 11px; color: #86868b; }
+
+  /* Preview table */
+  .preview-table { overflow-x: auto; }
+  .preview-table table { min-width: 600px; }
+  .preview-table th { background: #fafafa; }
+
+  /* Time estimation */
+  .est-date { font-weight: 600; color: #0071e3; }
+  .already-sig { color: #2e7d32; font-weight: 500; }
+  .time-date-inputs .setting-group { flex: 0 0 auto; }
+  .time-date-inputs .setting-group label { min-width: auto; }
+
+  /* Manual entry */
+  .variant-inputs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .variant-row { display: flex; gap: 8px; align-items: center; }
+  .variant-row input[type="text"] {
+    padding: 6px 10px; border: 1px solid #d2d2d7; border-radius: 8px;
+    font-size: 13px; width: 160px;
+  }
+  .variant-row input[type="number"] { width: 100px; flex: none; }
+  .btn {
+    padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px;
+    cursor: pointer; font-weight: 500; transition: all 0.15s;
+  }
+  .btn-primary { background: #0071e3; color: #fff; }
+  .btn-primary:hover { background: #0060c0; }
+  .btn-secondary { background: #e8e8ed; color: #1d1d1f; }
+  .btn-secondary:hover { background: #d2d2d7; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: #ffebee; color: #c62828; }
+  .btn-danger:hover { background: #ffcdd2; }
+  .btn-clear { background: none; border: 1px solid #d2d2d7; color: #86868b; padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+  .btn-clear:hover { background: #ffebee; color: #c62828; border-color: #c62828; }
+
+  .actions { display: flex; gap: 8px; margin-top: 8px; }
+
+  /* Overall summary banner */
+  .overall-banner {
+    background: linear-gradient(160deg, #1c2b70 0%, #1a0035 100%);
+    color: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+  }
+  .overall-banner h2 { color: #fff; margin-bottom: 14px; }
+  .variant-columns { display: flex; gap: 12px; }
+  .variant-col {
+    flex: 1; min-width: 0; background: rgba(40, 56, 139, 0.4);
+    border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .variant-col-label { font-size: 12px; color: #fff; line-height: 1.4; }
+  .variant-col-rate { font-size: 20px; font-weight: 600; color: #fff; line-height: 1.5; }
+  .vs-card {
+    background: rgba(0, 0, 0, 0.13); border-radius: 8px;
+    padding: 8px 12px; position: relative;
+  }
+  .vs-card-label { font-size: 12px; color: #fff; line-height: 1.5; }
+  .vs-card-lift { display: flex; align-items: center; gap: 4px; }
+  .vs-card-lift-value { font-size: 16px; font-weight: 600; line-height: 1.5; }
+  .vs-card-lift-positive { color: #5fee5f; }
+  .vs-card-lift-negative { color: #ff4545; }
+  .vs-card-lift-neutral { color: #fff; }
+  .vs-card-pvalue { font-size: 12px; color: rgba(255,255,255,0.8); line-height: 1.5; }
+  .vs-card-badge {
+    position: absolute; top: 8px; right: 8px;
+    padding: 2px 8px; border-radius: 4px; font-size: 12px;
+    line-height: 18px; white-space: nowrap;
+  }
+  .vs-card-badge-sig { background: #e8f0f5; color: #10369f; font-weight: 600; }
+  .vs-card-badge-nosig { background: rgba(250,250,250,0.56); color: #000; }
+  .vs-card-badge-trending { background: rgba(255,248,225,0.7); color: #f57f17; }
+
+  /* Light theme variant columns (per-step cards) */
+  .variant-col--light { background: #f5f5f5; }
+  .variant-col--light .variant-col-label,
+  .variant-col--light .variant-col-rate { color: #1d1d1f; }
+  .variant-col--light .vs-card { background: rgba(255,255,255,0.61); }
+  .variant-col--light .vs-card-label { color: #1d1d1f; }
+  .variant-col--light .vs-card-pvalue { color: rgba(0,0,0,0.8); }
+  .variant-col--light .vs-card-lift-positive { color: #1edb1e; }
+  .variant-col--light .vs-card-badge-nosig { background: rgba(213,213,213,0.56); }
+
+  /* Collapsible sections */
+  .collapsible { }
+  .collapsible-header {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none; padding: 16px 20px;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px;
+  }
+  .collapsible-header h2 { margin-bottom: 0; }
+  .collapsible-header .chevron {
+    font-size: 18px; color: #86868b; transition: transform 0.2s;
+    width: 24px; text-align: center;
+  }
+  .collapsible-header.open .chevron { transform: rotate(90deg); }
+  .collapsible-body {
+    max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+  }
+  .collapsible-body.open { max-height: none; }
+
+  /* Rename variant panel */
+  .rename-panel {
+    background: #f5f5f7; border: 1px solid #e8e8ed; border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .rename-panel h3 { font-size: 13px; color: #86868b; font-weight: 500; margin-bottom: 10px; }
+  .rename-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .rename-row:last-of-type { margin-bottom: 0; }
+  .rename-original {
+    flex: 1; font-size: 12px; color: #86868b; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rename-arrow { color: #c7c7cc; font-size: 16px; flex-shrink: 0; }
+  .rename-input {
+    flex: 1; border: 1px solid #d2d2d7; border-radius: 6px; padding: 5px 8px;
+    font-size: 13px; font-family: inherit; background: #fff; color: #1d1d1f;
+    transition: border-color 0.15s;
+  }
+  .rename-input:focus { border-color: #0071e3; outline: none; }
+  .rename-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  /* Hidden */
+  .hidden { display: none !important; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .config-row { flex-direction: column; }
+    .config-settings { width: 100%; }
+    .comparison-label { width: 140px; }
+    .variant-columns { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Page header with clear button -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>A/B Significance Calculator</h1>
+    <p class="subtitle">Import a FullStory funnel CSV or enter data manually to evaluate statistical significance</p>
+  </div>
+  <button class="btn-clear hidden" id="clearDataBtn">Clear data</button>
+</div>
+
+<!-- Config row: settings left, input right -->
+<div class="config-row">
+  <!-- Left: settings -->
+  <div class="config-settings">
+    <div class="setting-group">
+      <label>Confidence:</label>
+      <select id="confidenceLevel">
+        <option value="0.90">90%</option>
+        <option value="0.95" selected>95%</option>
+        <option value="0.99">99%</option>
+      </select>
+    </div>
+    <div class="setting-group">
+      <label>Power:</label>
+      <select id="powerLevel">
+        <option value="0.80" selected>80%</option>
+        <option value="0.90">90%</option>
+      </select>
+    </div>
+    <div class="toggles-row">
+      <label class="toggle-label">
+        <input type="checkbox" id="twoTailed" checked> Two-tailed
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="bonferroni"> Bonferroni
+      </label>
+    </div>
+  </div>
+
+  <!-- Right: data input (tabs + content) -->
+  <div class="config-input">
+    <div class="tab-bar">
+      <div class="tab active" data-tab="csv-tab">CSV Import</div>
+      <div class="tab" data-tab="manual-tab">Manual Entry</div>
+    </div>
+
+    <!-- CSV Import -->
+    <div id="csv-tab" class="tab-content active">
+      <div class="drop-zone" id="dropZone">
+        <p id="dropLabel">Drag &amp; drop a FullStory funnel CSV here</p>
+        <p>or <span class="browse" id="browseBtn">browse for file</span></p>
+        <input type="file" id="fileInput" accept=".csv" style="display:none">
+      </div>
+    </div>
+
+    <!-- Manual Entry -->
+    <div id="manual-tab" class="tab-content">
+      <p style="font-size:13px; color:#86868b; margin-bottom:10px;">Enter visitors (total) and conversions for each variant.</p>
+      <div class="variant-inputs" id="manualInputs">
+        <div class="variant-row">
+          <input type="text" placeholder="Variant name" value="Control">
+          <input type="number" placeholder="Visitors" min="0">
+          <input type="number" placeholder="Conversions" min="0">
+          <button class="btn btn-danger btn-sm remove-variant" title="Remove">x</button>
+        </div>
+        <div class="variant-row">
+          <input type="text" placeholder="Variant name" value="Variant A">
+          <input type="number" placeholder="Visitors" min="0">
+          <input type="number" placeholder="Conversions" min="0">
+          <button class="btn btn-danger btn-sm remove-variant" title="Remove">x</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary btn-sm" id="addVariantBtn">+ Add variant</button>
+        <button class="btn btn-primary" id="calcManualBtn">Calculate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="results" class="hidden">
+  <!-- Imported Data (collapsible) — above overall banner -->
+  <div class="collapsible hidden" id="previewSection">
+    <div class="collapsible-header" data-target="previewBody">
+      <h2>Imported Data</h2>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="collapsible-body" id="previewBody">
+      <div class="card" style="margin-top:-8px;">
+        <div class="preview-table" id="previewTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall banner -->
+  <div id="overallBanner"></div>
+
+  <!-- Per-step cards (collapsible) -->
+  <div class="collapsible hidden" id="stepsSection">
+    <div class="collapsible-header" data-target="stepsBody">
+      <h2>Per-Step Breakdown</h2>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="collapsible-body" id="stepsBody">
+      <div id="stepCards"></div>
+    </div>
+  </div>
+
+  <!-- Time estimation (collapsible) -->
+  <div class="collapsible hidden" id="timeSection">
+    <div class="collapsible-header" data-target="timeBody">
+      <h2>Time to Significance</h2>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="collapsible-body" id="timeBody">
+      <div class="card" style="margin-top:-8px;">
+        <div class="time-date-inputs" style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+          <div class="setting-group">
+            <label>Data start:</label>
+            <input type="date" id="dateStart">
+          </div>
+          <div class="setting-group">
+            <label>Data end:</label>
+            <input type="date" id="dateEnd">
+          </div>
+        </div>
+        <div id="timeEstimation"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Statistical functions (pure math, no dependencies)
+// ============================================================
+
+function normalCDF(x) {
+  if (x < -8) return 0;
+  if (x > 8) return 1;
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.SQRT2;
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return 0.5 * (1.0 + sign * y);
+}
+
+function normalInvCDF(p) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  if (p === 0.5) return 0;
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02,
+             -2.759285104469687e+02, 1.383577518672690e+02,
+             -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02,
+             -1.556989798598866e+02, 6.680131188771972e+01,
+             -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01,
+             -2.400758277161838e+00, -2.549732539343734e+00,
+              4.374664141464968e+00, 2.938163982698783e+00];
+  const d = [7.784695709041462e-03, 3.224671290700398e-01,
+              2.445134137142996e+00, 3.754408661907416e+00];
+  const pLow = 0.02425, pHigh = 1 - pLow;
+  let q, r;
+  if (p < pLow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+           ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  } else if (p <= pHigh) {
+    q = p - 0.5; r = q * q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  } else {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+}
+
+function twoProportionZTest(n1, x1, n2, x2, twoTailed) {
+  const p1 = x1 / n1;
+  const p2 = x2 / n2;
+  const pPool = (x1 + x2) / (n1 + n2);
+  const se = Math.sqrt(pPool * (1 - pPool) * (1/n1 + 1/n2));
+  if (se === 0) return { z: 0, p: 1, p1, p2, lift: 0, se: 0 };
+  const z = (p1 - p2) / se;
+  let pValue;
+  if (twoTailed) {
+    pValue = 2 * (1 - normalCDF(Math.abs(z)));
+  } else {
+    pValue = 1 - normalCDF(z);
+  }
+  const lift = p2 === 0 ? (p1 === 0 ? 0 : Infinity) : (p1 - p2) / p2;
+  return { z, p: pValue, p1, p2, lift, se };
+}
+
+function requiredSampleSize(p1, p2, alpha, power, twoTailed) {
+  if (p1 === p2) return Infinity;
+  const zAlpha = twoTailed
+    ? normalInvCDF(1 - alpha / 2)
+    : normalInvCDF(1 - alpha);
+  const zBeta = normalInvCDF(power);
+  const num = Math.pow(zAlpha + zBeta, 2) * (p1 * (1 - p1) + p2 * (1 - p2));
+  const den = Math.pow(p1 - p2, 2);
+  return Math.ceil(num / den);
+}
+
+// ============================================================
+// CSV Parser (FullStory funnel format)
+// ============================================================
+
+function parseFullStoryCSV(text) {
+  const lines = text.trim().split('\n');
+  function parseLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const header = parseLine(lines[0]);
+  const rows = lines.slice(1).map(parseLine);
+
+  const steps = [];
+  let currentStep = null;
+
+  for (const row of rows) {
+    const stepCol = row[0] || '';
+    const segment = row[1] || '';
+    const users = parseInt((row[2] || '').replace(/,/g, ''), 10) || 0;
+    const pctFromStart = row[3] || '';
+    const pctDropoff = row[4] || '';
+    const medianTime = row[5] || '';
+
+    if (stepCol) {
+      currentStep = { name: stepCol, variants: [] };
+      steps.push(currentStep);
+    }
+    if (currentStep && segment) {
+      currentStep.variants.push({ segment, users, pctFromStart, pctDropoff, medianTime });
+    }
+  }
+
+  const variantTotals = {};
+  if (steps.length > 0) {
+    for (const v of steps[0].variants) {
+      variantTotals[v.segment] = v.users;
+    }
+  }
+
+  return { steps, variantTotals };
+}
+
+// ============================================================
+// State
+// ============================================================
+
+let currentData = null;
+let variantNameOverrides = {}; // { originalSegment: customName }
+
+function displayName(segment) {
+  return variantNameOverrides[segment] || segment;
+}
+
+// ============================================================
+// Collapsible sections
+// ============================================================
+
+document.querySelectorAll('.collapsible-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const targetId = header.dataset.target;
+    const body = document.getElementById(targetId);
+    header.classList.toggle('open');
+    body.classList.toggle('open');
+  });
+});
+
+// ============================================================
+// UI Logic
+// ============================================================
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// File input
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const browseBtn = document.getElementById('browseBtn');
+
+browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+dropZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    try {
+      currentData = parseFullStoryCSV(text);
+      currentData.manual = false;
+      currentData.fileName = file.name;
+      document.getElementById('dropLabel').innerHTML = `<span class="file-loaded">&#10003; ${esc(file.name)}</span>`;
+      document.getElementById('clearDataBtn').classList.remove('hidden');
+      showPreview();
+      runAnalysis();
+    } catch (err) {
+      alert('Error parsing CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Clear data
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  currentData = null;
+  variantNameOverrides = {};
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('previewSection').classList.add('hidden');
+  document.getElementById('stepsSection').classList.add('hidden');
+  document.getElementById('timeSection').classList.add('hidden');
+  document.getElementById('clearDataBtn').classList.add('hidden');
+  document.getElementById('dropLabel').innerHTML = 'Drag &amp; drop a FullStory funnel CSV here';
+  fileInput.value = '';
+});
+
+// Manual entry
+document.getElementById('addVariantBtn').addEventListener('click', () => {
+  const container = document.getElementById('manualInputs');
+  const count = container.children.length;
+  if (count >= 4) return;
+  const div = document.createElement('div');
+  div.className = 'variant-row';
+  div.innerHTML = `
+    <input type="text" placeholder="Variant name" value="Variant ${String.fromCharCode(64 + count)}">
+    <input type="number" placeholder="Visitors" min="0">
+    <input type="number" placeholder="Conversions" min="0">
+    <button class="btn btn-danger btn-sm remove-variant" title="Remove">x</button>
+  `;
+  container.appendChild(div);
+  bindRemoveButtons();
+});
+
+function bindRemoveButtons() {
+  document.querySelectorAll('.remove-variant').forEach(btn => {
+    btn.onclick = () => {
+      const container = document.getElementById('manualInputs');
+      if (container.children.length > 2) btn.parentElement.remove();
+    };
+  });
+}
+bindRemoveButtons();
+
+document.getElementById('calcManualBtn').addEventListener('click', () => {
+  const rows = document.querySelectorAll('#manualInputs .variant-row');
+  const variants = [];
+  for (const row of rows) {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0].value.trim() || `Variant ${variants.length + 1}`;
+    const visitors = parseInt(inputs[1].value, 10);
+    const conversions = parseInt(inputs[2].value, 10);
+    if (isNaN(visitors) || isNaN(conversions) || visitors <= 0) {
+      alert('Please enter valid visitor and conversion counts for all variants.');
+      return;
+    }
+    if (conversions > visitors) {
+      alert(`Conversions cannot exceed visitors for "${name}".`);
+      return;
+    }
+    variants.push({ segment: name, visitors, conversions });
+  }
+  currentData = {
+    manual: true,
+    variants,
+    steps: [{
+      name: 'Conversion',
+      variants: variants.map(v => ({ segment: v.segment, users: v.conversions }))
+    }],
+    variantTotals: {}
+  };
+  for (const v of variants) {
+    currentData.variantTotals[v.segment] = v.visitors;
+  }
+  document.getElementById('clearDataBtn').classList.remove('hidden');
+  showPreview();
+  runAnalysis();
+});
+
+// Settings changes -> re-run
+['confidenceLevel', 'powerLevel', 'twoTailed', 'bonferroni', 'dateStart', 'dateEnd'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (currentData) runAnalysis();
+  });
+});
+
+// ============================================================
+// Preview
+// ============================================================
+
+function showPreview() {
+  const section = document.getElementById('previewSection');
+  const table = document.getElementById('previewTable');
+  section.classList.remove('hidden');
+
+  const segments = Object.keys(currentData.variantTotals);
+
+  // Rename panel with arrow and save button
+  let renameHtml = '<div class="rename-panel"><h3>Rename Variants</h3>';
+  for (const seg of segments) {
+    const currentName = displayName(seg);
+    renameHtml += `<div class="rename-row">
+      <span class="rename-original" title="${esc(seg)}">${esc(seg)}</span>
+      <span class="rename-arrow">&rarr;</span>
+      <input class="rename-input" type="text" data-segment="${esc(seg)}" value="${esc(currentName)}" placeholder="${esc(seg)}">
+    </div>`;
+  }
+  renameHtml += '<div class="rename-actions"><button class="btn btn-primary btn-sm" id="saveRenamesBtn">Save names</button></div>';
+  renameHtml += '</div>';
+
+  // Data table
+  let dataHtml = '';
+  if (currentData.manual) {
+    dataHtml = '<table><tr><th>Variant</th><th class="num">Visitors</th><th class="num">Conversions</th><th class="num">Rate</th></tr>';
+    for (const v of currentData.variants) {
+      const rate = ((v.conversions / v.visitors) * 100).toFixed(2);
+      dataHtml += `<tr><td>${esc(displayName(v.segment))}</td><td class="num">${v.visitors.toLocaleString()}</td><td class="num">${v.conversions.toLocaleString()}</td><td class="num">${rate}%</td></tr>`;
+    }
+    dataHtml += '</table>';
+  } else {
+    dataHtml = '<table><tr><th>Step</th><th>Segment</th><th class="num">Users</th><th class="num">% From Start</th><th class="num">Drop-off</th><th>Median Time</th></tr>';
+    for (const step of currentData.steps) {
+      let first = true;
+      for (const v of step.variants) {
+        dataHtml += '<tr>';
+        dataHtml += first ? `<td>${esc(step.name)}</td>` : '<td></td>';
+        dataHtml += `<td>${esc(displayName(v.segment))}</td>`;
+        dataHtml += `<td class="num">${v.users.toLocaleString()}</td>`;
+        dataHtml += `<td class="num">${v.pctFromStart || '-'}</td>`;
+        dataHtml += `<td class="num">${v.pctDropoff || '-'}</td>`;
+        dataHtml += `<td>${v.medianTime || '-'}</td>`;
+        dataHtml += '</tr>';
+        first = false;
+      }
+    }
+    dataHtml += '</table>';
+  }
+
+  table.innerHTML = renameHtml + dataHtml;
+
+  // Bind save button — collects all inputs and commits overrides on click
+  document.getElementById('saveRenamesBtn').addEventListener('click', () => {
+    const inputs = table.querySelectorAll('.rename-input');
+    variantNameOverrides = {};
+    inputs.forEach(input => {
+      const seg = input.dataset.segment;
+      const val = input.value.trim();
+      if (val && val !== seg) {
+        variantNameOverrides[seg] = val;
+      }
+    });
+    runAnalysis();
+    updatePreviewDataTable();
+  });
+}
+
+function updatePreviewDataTable() {
+  const table = document.getElementById('previewTable');
+  const dataTables = table.querySelectorAll('table');
+  if (dataTables.length < 1) return;
+  const dataTable = dataTables[dataTables.length - 1];
+
+  if (currentData.manual) {
+    let html = '<tr><th>Variant</th><th class="num">Visitors</th><th class="num">Conversions</th><th class="num">Rate</th></tr>';
+    for (const v of currentData.variants) {
+      const rate = ((v.conversions / v.visitors) * 100).toFixed(2);
+      html += `<tr><td>${esc(displayName(v.segment))}</td><td class="num">${v.visitors.toLocaleString()}</td><td class="num">${v.conversions.toLocaleString()}</td><td class="num">${rate}%</td></tr>`;
+    }
+    dataTable.innerHTML = html;
+  } else {
+    let html = '<tr><th>Step</th><th>Segment</th><th class="num">Users</th><th class="num">% From Start</th><th class="num">Drop-off</th><th>Median Time</th></tr>';
+    for (const step of currentData.steps) {
+      let first = true;
+      for (const v of step.variants) {
+        html += '<tr>';
+        html += first ? `<td>${esc(step.name)}</td>` : '<td></td>';
+        html += `<td>${esc(displayName(v.segment))}</td>`;
+        html += `<td class="num">${v.users.toLocaleString()}</td>`;
+        html += `<td class="num">${v.pctFromStart || '-'}</td>`;
+        html += `<td class="num">${v.pctDropoff || '-'}</td>`;
+        html += `<td>${v.medianTime || '-'}</td>`;
+        html += '</tr>';
+        first = false;
+      }
+    }
+    dataTable.innerHTML = html;
+  }
+}
+
+// ============================================================
+// Analysis
+// ============================================================
+
+function runAnalysis() {
+  const alpha = 1 - parseFloat(document.getElementById('confidenceLevel').value);
+  const power = parseFloat(document.getElementById('powerLevel').value);
+  const twoTailed = document.getElementById('twoTailed').checked;
+  const useBonferroni = document.getElementById('bonferroni').checked;
+
+  const dateStart = document.getElementById('dateStart').value;
+  const dateEnd = document.getElementById('dateEnd').value;
+  let dataDays = null;
+  if (dateStart && dateEnd) {
+    const d1 = new Date(dateStart);
+    const d2 = new Date(dateEnd);
+    dataDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+  }
+
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.classList.remove('hidden');
+
+  const { steps, variantTotals } = currentData;
+  const segments = Object.keys(variantTotals);
+  const numComparisons = segments.length * (segments.length - 1) / 2;
+  const adjAlpha = useBonferroni && numComparisons > 1 ? alpha / numComparisons : alpha;
+
+  let stepHtml = '';
+  const allStepResults = [];
+
+  for (let si = 0; si < steps.length; si++) {
+    const step = steps[si];
+    if (si === 0 && !currentData.manual) {
+      stepHtml += `<div class="card">
+        <div class="step-header"><h3>${esc(step.name)}</h3><span style="font-size:13px;color:#86868b;">Entry point</span></div>
+        <table><tr><th>Variant</th><th class="num">Users</th></tr>`;
+      for (const v of step.variants) {
+        stepHtml += `<tr><td>${esc(displayName(v.segment))}</td><td class="num">${v.users.toLocaleString()}</td></tr>`;
+      }
+      stepHtml += '</table></div>';
+      continue;
+    }
+
+    const variantData = step.variants.map(v => ({
+      segment: v.segment,
+      total: variantTotals[v.segment],
+      conversions: v.users,
+      rate: v.users / variantTotals[v.segment]
+    }));
+
+    const comparisons = [];
+    for (let i = 0; i < variantData.length; i++) {
+      for (let j = i + 1; j < variantData.length; j++) {
+        const a = variantData[i];
+        const b = variantData[j];
+        const result = twoProportionZTest(a.total, a.conversions, b.total, b.conversions, twoTailed);
+        const isSignificant = result.p < adjAlpha;
+        const isTrending = !isSignificant && result.p < adjAlpha * 2;
+        const reqN = requiredSampleSize(result.p1, result.p2, alpha, power, twoTailed);
+        comparisons.push({
+          labelA: a.segment, labelB: b.segment,
+          ...result, isSignificant, isTrending, reqN,
+          currentNA: a.total, currentNB: b.total
+        });
+      }
+    }
+
+    allStepResults.push({ step, variantData, comparisons });
+
+    stepHtml += `<div class="card">
+      <div class="step-header">
+        <h3>${esc(step.name)}</h3>
+        <span style="font-size:13px;color:#86868b;">Conversion from start</span>
+      </div>
+      <table>
+        <tr><th>Variant</th><th class="num">Users</th><th class="num">Conversions</th><th class="num">Rate</th></tr>`;
+    for (const v of variantData) {
+      stepHtml += `<tr>
+        <td>${esc(displayName(v.segment))}</td>
+        <td class="num">${v.total.toLocaleString()}</td>
+        <td class="num">${v.conversions.toLocaleString()}</td>
+        <td class="num">${(v.rate * 100).toFixed(2)}%</td>
+      </tr>`;
+    }
+    stepHtml += '</table>';
+
+    // Variant columns with bidirectional comparisons (light theme)
+    stepHtml += '<div class="variant-columns" style="margin-top:16px;">';
+    for (const variant of variantData) {
+      stepHtml += `<div class="variant-col variant-col--light">
+        <div>
+          <div class="variant-col-label">${esc(displayName(variant.segment))}</div>
+          <div class="variant-col-rate">${(variant.rate * 100).toFixed(2)}%</div>
+        </div>`;
+
+      for (const other of variantData) {
+        if (other.segment === variant.segment) continue;
+        const result = twoProportionZTest(variant.total, variant.conversions, other.total, other.conversions, twoTailed);
+        const isSignificant = result.p < adjAlpha;
+        const isTrending = !isSignificant && result.p < adjAlpha * 2;
+        const lift = other.rate === 0 ? (variant.rate === 0 ? 0 : Infinity) : (variant.rate - other.rate) / other.rate;
+        const liftPct = (lift * 100).toFixed(1);
+        const liftSign = lift > 0 ? '+' : '';
+        const liftColorClass = lift > 0 ? 'vs-card-lift-positive' : lift < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
+        const arrow = lift >= 0 ? '\u2197' : '\u2198';
+        const badgeClass = isSignificant ? 'vs-card-badge-sig' : isTrending ? 'vs-card-badge-trending' : 'vs-card-badge-nosig';
+        const badgeText = isSignificant ? 'Significant' : isTrending ? 'Trending' : 'Not significant';
+
+        stepHtml += `<div class="vs-card">
+          <div class="vs-card-label">vs ${esc(displayName(other.segment))}</div>
+          <div class="vs-card-lift">
+            <span class="vs-card-lift-value ${liftColorClass}">${liftSign}${liftPct}%</span>
+            <span class="${liftColorClass}">${arrow}</span>
+          </div>
+          <div class="vs-card-pvalue">p=${result.p < 0.0001 ? '<0.0001' : result.p.toFixed(4)}</div>
+          <span class="vs-card-badge ${badgeClass}">${badgeText}</span>
+        </div>`;
+      }
+
+      stepHtml += '</div>';
+    }
+    stepHtml += '</div></div>';
+  }
+
+  document.getElementById('stepCards').innerHTML = stepHtml;
+  document.getElementById('stepsSection').classList.remove('hidden');
+
+  // Overall banner (last step = full funnel conversion)
+  const lastStepResults = allStepResults[allStepResults.length - 1];
+  if (lastStepResults) {
+    let bannerHtml = `<div class="overall-banner">
+      <h2>Complete Funnel</h2>
+      <div class="variant-columns">`;
+
+    for (const variant of lastStepResults.variantData) {
+      bannerHtml += `<div class="variant-col">
+        <div>
+          <div class="variant-col-label">${esc(displayName(variant.segment))}</div>
+          <div class="variant-col-rate">${(variant.rate * 100).toFixed(2)}%</div>
+        </div>`;
+
+      // Comparison cards against every other variant
+      for (const other of lastStepResults.variantData) {
+        if (other.segment === variant.segment) continue;
+        const result = twoProportionZTest(variant.total, variant.conversions, other.total, other.conversions, twoTailed);
+        const isSignificant = result.p < adjAlpha;
+        const isTrending = !isSignificant && result.p < adjAlpha * 2;
+        const lift = other.rate === 0 ? (variant.rate === 0 ? 0 : Infinity) : (variant.rate - other.rate) / other.rate;
+        const liftPct = (lift * 100).toFixed(1);
+        const liftSign = lift > 0 ? '+' : '';
+        const liftColorClass = lift > 0 ? 'vs-card-lift-positive' : lift < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
+        const arrow = lift >= 0 ? '\u2197' : '\u2198';
+        const badgeClass = isSignificant ? 'vs-card-badge-sig' : isTrending ? 'vs-card-badge-trending' : 'vs-card-badge-nosig';
+        const badgeText = isSignificant ? 'Significant' : isTrending ? 'Trending' : 'Not significant';
+
+        bannerHtml += `<div class="vs-card">
+          <div class="vs-card-label">vs ${esc(displayName(other.segment))}</div>
+          <div class="vs-card-lift">
+            <span class="vs-card-lift-value ${liftColorClass}">${liftSign}${liftPct}%</span>
+            <span class="${liftColorClass}">${arrow}</span>
+          </div>
+          <div class="vs-card-pvalue">p=${result.p < 0.0001 ? '<0.0001' : result.p.toFixed(4)}</div>
+          <span class="vs-card-badge ${badgeClass}">${badgeText}</span>
+        </div>`;
+      }
+
+      bannerHtml += '</div>';
+    }
+
+    bannerHtml += '</div></div>';
+    document.getElementById('overallBanner').innerHTML = bannerHtml;
+  }
+
+  // Time estimation — always show section, handle empty state inside
+  document.getElementById('timeSection').classList.remove('hidden');
+
+  if (dataDays && lastStepResults) {
+    let timeHtml = `<p style="font-size:13px; color:#86868b; margin-bottom:12px;">Based on ${dataDays} day${dataDays > 1 ? 's' : ''} of data. Assumes constant traffic and conversion rates.</p>
+      <table>
+        <tr><th>Comparison</th><th>Step</th><th class="num">Required n/group</th><th class="num">Current max n</th><th class="num">Days remaining</th><th>Est. date</th></tr>`;
+
+    for (const stepResult of allStepResults) {
+      for (const c of stepResult.comparisons) {
+        if (c.isSignificant) {
+          timeHtml += `<tr>
+            <td>${esc(displayName(c.labelA))} vs ${esc(displayName(c.labelB))}</td>
+            <td>${esc(stepResult.step.name)}</td>
+            <td class="num">-</td><td class="num">-</td><td class="num">-</td>
+            <td class="already-sig">Already significant</td>
+          </tr>`;
+        } else {
+          const maxCurrent = Math.max(c.currentNA, c.currentNB);
+          const dailyRate = maxCurrent / dataDays;
+          let daysNeeded;
+          if (c.reqN === Infinity || dailyRate === 0) {
+            daysNeeded = Infinity;
+          } else {
+            const remaining = Math.max(0, c.reqN - maxCurrent);
+            daysNeeded = Math.ceil(remaining / dailyRate);
+          }
+          const estDate = daysNeeded === Infinity ? 'N/A' : (() => {
+            const d = new Date(document.getElementById('dateEnd').value);
+            d.setDate(d.getDate() + daysNeeded);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          })();
+
+          timeHtml += `<tr>
+            <td>${esc(displayName(c.labelA))} vs ${esc(displayName(c.labelB))}</td>
+            <td>${esc(stepResult.step.name)}</td>
+            <td class="num">${c.reqN === Infinity ? '&infin;' : c.reqN.toLocaleString()}</td>
+            <td class="num">${maxCurrent.toLocaleString()}</td>
+            <td class="num">${daysNeeded === Infinity ? '&infin;' : daysNeeded.toLocaleString()}</td>
+            <td class="est-date">${estDate}</td>
+          </tr>`;
+        }
+      }
+    }
+    timeHtml += '</table>';
+    document.getElementById('timeEstimation').innerHTML = timeHtml;
+  } else {
+    document.getElementById('timeEstimation').innerHTML = '<p style="text-align:center; color:#86868b; padding:12px 0;">Enter the date range of your test data above to estimate when each comparison will reach statistical significance.</p>';
+  }
+}
+
+function esc(str) {
+  const el = document.createElement('span');
+  el.textContent = str;
+  return el.innerHTML;
+}
+
+
+
+</script>
+</body>
+</html>
