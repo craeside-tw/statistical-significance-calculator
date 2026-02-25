@@ -216,6 +216,13 @@
     width: 24px; text-align: center;
   }
   .collapsible-header.open .chevron { transform: rotate(90deg); }
+  .collapsible-header--inline {
+    background: none; box-shadow: none; border-radius: 0;
+    padding: 10px 0 8px; margin-bottom: 0;
+    border-top: 1px solid #e8e8ed; margin-top: 12px;
+  }
+  .collapsible-header--inline h3 { font-size: 13px; color: #86868b; font-weight: 500; margin-bottom: 0; }
+  .collapsible-header--inline .chevron { font-size: 14px; }
   .collapsible-body {
     max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
   }
@@ -310,6 +317,15 @@
         <p>or <span class="browse" id="browseBtn">browse for file</span></p>
         <input type="file" id="fileInput" accept=".csv" style="display:none">
       </div>
+      <div class="collapsible hidden" id="previewSection">
+        <div class="collapsible-header collapsible-header--inline" data-target="previewBody">
+          <h3>Imported Data</h3>
+          <span class="chevron">&#9654;</span>
+        </div>
+        <div class="collapsible-body" id="previewBody">
+          <div class="preview-table" id="previewTable"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Manual Entry -->
@@ -339,19 +355,6 @@
 
 <!-- Results -->
 <div id="results" class="hidden">
-  <!-- Imported Data (collapsible) — above overall banner -->
-  <div class="collapsible hidden" id="previewSection">
-    <div class="collapsible-header" data-target="previewBody">
-      <h2>Imported Data</h2>
-      <span class="chevron">&#9654;</span>
-    </div>
-    <div class="collapsible-body" id="previewBody">
-      <div class="card" style="margin-top:-8px;">
-        <div class="preview-table" id="previewTable"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- Overall banner -->
   <div id="overallBanner"></div>
 
