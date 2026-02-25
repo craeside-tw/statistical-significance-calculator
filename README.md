@@ -1,8 +1,8 @@
-# A/B Significance Calculator
+# Statistical Significance Calculator
 
 A self-contained, single-page tool for evaluating statistical significance in A/B (and A/B/n) conversion rate experiments. Built for quick analysis of funnel data exported from FullStory, or for manual data entry.
 
-**[Live Demo →](https://craeside-tw.github.io/ab-significance-calculator/)**
+**[Live Demo →](https://craeside-tw.github.io/statistical-significance-calculator/)**
 
 ## Features
 
@@ -77,7 +77,7 @@ Zero dependencies. Single HTML file with inline CSS and vanilla JavaScript. No b
 
 ## Usage
 
-1. Open the page (or the [live demo](https://craeside-tw.github.io/ab-significance-calculator/))
+1. Open the page (or the [live demo](https://craeside-tw.github.io/statistical-significance-calculator/))
 2. Import a FullStory funnel CSV or enter data manually
 3. Adjust confidence, power, tailed-ness, and Bonferroni settings as needed
 4. Review the Complete Funnel overview and Per-Step Breakdown
