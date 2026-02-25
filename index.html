@@ -295,7 +295,7 @@
     </div>
     <div class="control-group">
       <label class="toggle-label">
-        <input type="checkbox" id="bonferroni"> Multi-variant correction
+        <input type="checkbox" id="bonferroni"> Multi-variant test
       </label>
       <span class="control-group-desc">Adjusts significance threshold when comparing 3+ variants to reduce false positives (Bonferroni)</span>
     </div>
@@ -545,6 +545,11 @@ function displayName(segment) {
   return variantNameOverrides[segment] || segment;
 }
 
+function autoBonferroni() {
+  const n = Object.keys(currentData.variantTotals).length;
+  document.getElementById('bonferroni').checked = n > 2;
+}
+
 function autoCleanVariantNames(segments) {
   if (segments.length < 2) return;
   // Longest common prefix
@@ -634,6 +639,7 @@ function handleFile(file) {
       currentData.fileName = file.name;
       variantNameOverrides = {};
       autoCleanVariantNames(Object.keys(currentData.variantTotals));
+      autoBonferroni();
       document.getElementById('dropLabel').innerHTML = `<span class="file-loaded">&#10003; ${esc(file.name)}</span>`;
       document.getElementById('clearDataBtn').classList.remove('hidden');
       showPreview();
@@ -715,6 +721,7 @@ document.getElementById('calcManualBtn').addEventListener('click', () => {
   for (const v of variants) {
     currentData.variantTotals[v.segment] = v.visitors;
   }
+  autoBonferroni();
   document.getElementById('clearDataBtn').classList.remove('hidden');
   showPreview();
   runAnalysis();
