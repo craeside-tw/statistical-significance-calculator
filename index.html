@@ -211,14 +211,44 @@
   .vs-card-badge-trending { background: rgba(255,248,225,0.7); color: #f57f17; }
 
   /* Light theme variant columns (per-step cards) */
-  .variant-col--light { background: #f5f5f5; }
+  .variant-col--light {
+    background: #fff; border: 1px solid rgba(0,0,0,0.06); }
   .variant-col--light .variant-col-label,
   .variant-col--light .variant-col-rate { color: #1d1d1f; }
-  .variant-col--light .vs-card { background: rgba(255,255,255,0.61); }
+  .variant-col--light .vs-card { background: #fbfbfb; }
   .variant-col--light .vs-card-label { color: #1d1d1f; }
   .variant-col--light .vs-card-pvalue { color: rgba(0,0,0,0.8); }
   .variant-col--light .vs-card-lift-positive { color: #1edb1e; }
-  .variant-col--light .vs-card-badge-nosig { background: rgba(213,213,213,0.56); }
+  .variant-col--light .vs-card-badge-nosig { background: rgba(213,213,213,0.37); color: rgba(0,0,0,0.4); }
+  .variant-col--light .vs-card-badge-trending { background: rgba(245,233,195,0.67); color: #eb9d00; }
+
+  /* Control variant muted style */
+  .variant-col--control {
+    background: rgba(245,245,245,0.8); border: none;
+  }
+  .variant-col--control .variant-col-label,
+  .variant-col--control .variant-col-rate { color: rgba(0,0,0,0.43); }
+  .variant-col--control .vs-card { background: rgba(255,255,255,0.61); }
+
+  /* Steps container: single white card wrapping header + all steps */
+  .steps-container {
+    background: #fff; border-radius: 12px; padding: 0 16px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px;
+  }
+  .steps-container .collapsible-header {
+    background: none; box-shadow: none; border-radius: 0; margin-bottom: 0;
+    padding: 16px 4px;
+  }
+  .step-section {
+    background: #fbfbfb; border-radius: 12px; padding: 12px 20px 20px;
+    margin-bottom: 0;
+  }
+  .step-section + .step-section { margin-top: 16px; }
+  .step-section table { border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+  .step-section table th { border-bottom: 1px solid rgba(0,0,0,0.08); padding: 7px 12px; }
+  .step-section table td { border-bottom: 1px solid rgba(0,0,0,0.08); padding: 7px 12px; }
+  .step-section table tr:last-child td { border-bottom: none; }
+  .variant-analysis-label { font-size: 12px; font-weight: 600; color: #1d1d1f; margin-bottom: 8px; margin-top: 4px; }
 
   /* Collapsible sections */
   .collapsible { }
@@ -396,7 +426,7 @@
   <div id="overallBanner"></div>
 
   <!-- Per-step cards (collapsible) -->
-  <div class="collapsible hidden" id="stepsSection">
+  <div class="collapsible steps-container hidden" id="stepsSection">
     <div class="collapsible-header" data-target="stepsBody">
       <h2>Per-Step Breakdown</h2>
       <span class="chevron">&#9654;</span>
@@ -913,7 +943,7 @@ function runAnalysis() {
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
     if (si === 0 && !currentData.manual) {
-      stepHtml += `<div class="card">
+      stepHtml += `<div class="step-section">
         <div class="step-header"><h3>${esc(step.name)}</h3><span style="font-size:13px;color:#86868b;">Entry point</span></div>
         <table><tr><th>Variant</th><th class="num">Users</th></tr>`;
       for (const v of step.variants) {
@@ -949,7 +979,7 @@ function runAnalysis() {
 
     allStepResults.push({ step, variantData, comparisons });
 
-    stepHtml += `<div class="card">
+    stepHtml += `<div class="step-section">
       <div class="step-header">
         <h3>${esc(step.name)}</h3>
         <span style="font-size:13px;color:#86868b;">Conversion from start</span>
@@ -967,9 +997,12 @@ function runAnalysis() {
     stepHtml += '</table>';
 
     // Variant columns with bidirectional comparisons (light theme)
-    stepHtml += '<div class="variant-columns" style="margin-top:16px;">';
+    stepHtml += '<div class="variant-analysis-label">Variant analysis</div>';
+    stepHtml += '<div class="variant-columns">';
     for (const variant of variantData) {
-      stepHtml += `<div class="variant-col variant-col--light">
+      const isControl = displayName(variant.segment).toLowerCase() === 'control';
+      const colClass = isControl ? 'variant-col variant-col--light variant-col--control' : 'variant-col variant-col--light';
+      stepHtml += `<div class="${colClass}">
         <div>
           <div class="variant-col-label">${esc(displayName(variant.segment))}</div>
           <div class="variant-col-rate">${(variant.rate * 100).toFixed(2)}%</div>
