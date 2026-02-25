@@ -181,6 +181,7 @@
   .vs-card-lift-positive { color: #5fee5f; }
   .vs-card-lift-negative { color: #ff4545; }
   .vs-card-lift-neutral { color: #fff; }
+  .vs-card-lift-pct { font-size: 12px; font-weight: 400; opacity: 0.7; }
   .vs-card-pvalue { font-size: 12px; color: rgba(255,255,255,0.8); line-height: 1.5; }
   .vs-card-badge {
     position: absolute; top: 8px; right: 8px;
@@ -887,18 +888,21 @@ function runAnalysis() {
         const result = twoProportionZTest(variant.total, variant.conversions, other.total, other.conversions, twoTailed);
         const isSignificant = result.p < adjAlpha;
         const isTrending = !isSignificant && result.p < adjAlpha * 2;
+        const ptDiff = (variant.rate - other.rate) * 100;
+        const ptSign = ptDiff > 0 ? '+' : '';
         const lift = other.rate === 0 ? (variant.rate === 0 ? 0 : Infinity) : (variant.rate - other.rate) / other.rate;
         const liftPct = (lift * 100).toFixed(1);
         const liftSign = lift > 0 ? '+' : '';
-        const liftColorClass = lift > 0 ? 'vs-card-lift-positive' : lift < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
-        const arrow = lift >= 0 ? '\u2197' : '\u2198';
+        const liftColorClass = ptDiff > 0 ? 'vs-card-lift-positive' : ptDiff < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
+        const arrow = ptDiff >= 0 ? '\u2197' : '\u2198';
         const badgeClass = isSignificant ? 'vs-card-badge-sig' : isTrending ? 'vs-card-badge-trending' : 'vs-card-badge-nosig';
         const badgeText = isSignificant ? 'Significant' : isTrending ? 'Trending' : 'Not significant';
 
         stepHtml += `<div class="vs-card">
           <div class="vs-card-label">vs ${esc(displayName(other.segment))}</div>
           <div class="vs-card-lift">
-            <span class="vs-card-lift-value ${liftColorClass}">${liftSign}${liftPct}%</span>
+            <span class="vs-card-lift-value ${liftColorClass}">${ptSign}${ptDiff.toFixed(1)} pt</span>
+            <span class="vs-card-lift-pct ${liftColorClass}">(${liftSign}${liftPct}%)</span>
             <span class="${liftColorClass}">${arrow}</span>
           </div>
           <div class="vs-card-pvalue">p=${result.p < 0.0001 ? '<0.0001' : result.p.toFixed(4)}</div>
@@ -934,18 +938,21 @@ function runAnalysis() {
         const result = twoProportionZTest(variant.total, variant.conversions, other.total, other.conversions, twoTailed);
         const isSignificant = result.p < adjAlpha;
         const isTrending = !isSignificant && result.p < adjAlpha * 2;
+        const ptDiff = (variant.rate - other.rate) * 100;
+        const ptSign = ptDiff > 0 ? '+' : '';
         const lift = other.rate === 0 ? (variant.rate === 0 ? 0 : Infinity) : (variant.rate - other.rate) / other.rate;
         const liftPct = (lift * 100).toFixed(1);
         const liftSign = lift > 0 ? '+' : '';
-        const liftColorClass = lift > 0 ? 'vs-card-lift-positive' : lift < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
-        const arrow = lift >= 0 ? '\u2197' : '\u2198';
+        const liftColorClass = ptDiff > 0 ? 'vs-card-lift-positive' : ptDiff < 0 ? 'vs-card-lift-negative' : 'vs-card-lift-neutral';
+        const arrow = ptDiff >= 0 ? '\u2197' : '\u2198';
         const badgeClass = isSignificant ? 'vs-card-badge-sig' : isTrending ? 'vs-card-badge-trending' : 'vs-card-badge-nosig';
         const badgeText = isSignificant ? 'Significant' : isTrending ? 'Trending' : 'Not significant';
 
         bannerHtml += `<div class="vs-card">
           <div class="vs-card-label">vs ${esc(displayName(other.segment))}</div>
           <div class="vs-card-lift">
-            <span class="vs-card-lift-value ${liftColorClass}">${liftSign}${liftPct}%</span>
+            <span class="vs-card-lift-value ${liftColorClass}">${ptSign}${ptDiff.toFixed(1)} pt</span>
+            <span class="vs-card-lift-pct ${liftColorClass}">(${liftSign}${liftPct}%)</span>
             <span class="${liftColorClass}">${arrow}</span>
           </div>
           <div class="vs-card-pvalue">p=${result.p < 0.0001 ? '<0.0001' : result.p.toFixed(4)}</div>
